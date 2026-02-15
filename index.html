@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prime Axis Estate - Financial Strategy Simulator</title>
+    
+    <!-- 1. Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0f172a', // Navy Dark (Slate 900)
+                        secondary: '#334155', // Slate 700
+                        accent: '#d97706', // Amber 600 (Gold)
+                        success: '#15803d', // Emerald 700
+                        danger: '#b91c1c', // Red 700
+                        light: '#f1f5f9', // Slate 100
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- 2. Load React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- 3. Load Dependencies -->
+    <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body { font-family: 'Sarabun', sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background-color: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #e2e8f0; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .traffic-light { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .card { background: white; border: 1px solid #e2e8f0; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); overflow: hidden; }
+        .card-header { padding: 1rem 1.25rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #fff; }
+        .card-title { font-weight: 700; font-size: 0.9rem; color: #334155; display: flex; align-items: center; gap: 0.5rem; text-transform: uppercase; letter-spacing: 0.025em; }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, ComposedChart } = Recharts;
+
+        // Icons
+        const Icon = ({ path, size = 18, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} dangerouslySetInnerHTML={{ __html: path }} />
+        );
+        const icons = {
+            activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+            home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+            users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+            fileText: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/>',
+            pieChart: '<path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>',
+            table: '<path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/>',
+            refreshCw: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+            trendingUp: '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
+            settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+            target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+            banknote: '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+            clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+            briefcase: '<rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+            megaphone: '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>'
+        };
+
+        const FinancialDashboard = () => {
+            const [inputs, setInputs] = useState({
+                vatMode: 'include',
+                growthRate: 0, 
+                annualGrowthRate: 15, 
+                inflationRate: 5, // Default inflation
+                initialCapital: 2000000,
+                capexRegistration: 20000, capexOffice: 120000, capexEquipment: 100000, capexTech: 60000, capexLaunch: 50000,
+                avgHousePrice: 7000000, salesVolume: 3, salesCommRate: 5,             
+                rentalVolume: 7, avgRentalPrice: 50000, rentalCommMonths: 1,          
+                marketingBudget: 100000, officeRent: 35000, softwareCost: 10000, otherExpenses: 0, 
+                salaryManagerRate: 30000, salaryManagerCount: 1,
+                salarySalesRate: 18000,   salarySalesCount: 2,
+                salaryAdminRate: 15000,   salaryAdminCount: 1,
+                salaryListingRate: 15000, salaryListingCount: 1,
+                salaryContentRate: 15000, salaryContentCount: 1,
+                shareSales: 30, shareListing: 2.5, shareAdmin: 2.5, shareManager: 0, shareContent: 0,
+                marketingSplitPct: 70, cplSale: 400, cplRent: 200, qualifyRateSale: 20, qualifyRateRent: 25, closeRateSale: 10, closeRateRent: 20,
+                sensAdBudget: 0, sensSalesVol: 0, sensVatRate: 7,
+                newHires: 0, avgNewSalary: 20000,
+                dividendRate: 50, // Dividend Payout Ratio
+            });
+
+            // Init Safe State
+            const [results, setResults] = useState({
+                totalCapex: 0, workingCapital: 0, totalGross: 0, vatAmount: 0, netRevenue: 0,
+                distSales: 0, distListing: 0, distAdmin: 0, distManager: 0, distContent: 0, distCompany: 0,
+                totalExpenses: 0, annualNetProfit: 0, roi: 0, paybackPeriod: 0, breakEvenPoint: 0,
+                taxDetails: [], totalTax: 0, monthlyEBT: 0, annualEBT: 0, totalSalaries: 0,
+                companySharePercent: 0,
+                kpi: { netMargin: { val: 0, status: 'good' }, runway: { val: 0, status: 'good' } }, 
+                runwayMonths: 0, 
+                marketing: { sales: {}, rent: {}, totalROAS: 0 }, 
+                dividends: { total: 0, perFounderYear: 0, perFounderMonth: 0, cumulative5Year: 0 }, 
+                headcountImpact: { diffProfit: 0 },
+                year1RevenueSum: 0, year1ExpenseSum: 0, finalCashBalance: 0
+            });
+
+            const [cashFlowData, setCashFlowData] = useState([]);
+            const [fiveYearData, setFiveYearData] = useState([]);
+            const [expensePieData, setExpensePieData] = useState([]);
+            const [revenuePieData, setRevenuePieData] = useState([]);
+            const [bepChartData, setBepChartData] = useState([]);
+
+            const calculateTax = (annualEBT) => {
+                let tax = 0;
+                if (annualEBT > 3000000) { tax += (annualEBT - 3000000) * 0.20; tax += 2700000 * 0.15; } 
+                else if (annualEBT > 300000) { tax += (annualEBT - 300000) * 0.15; }
+                return tax < 0 ? 0 : tax;
+            }
+
+            useEffect(() => {
+                const adjSalesVolume = inputs.salesVolume * (1 + inputs.sensSalesVol/100);
+                const adjRentalVolume = inputs.rentalVolume * (1 + inputs.sensSalesVol/100);
+                const adjMarketingBudget = inputs.marketingBudget * (1 + inputs.sensAdBudget/100);
+                const currentVatRate = inputs.sensVatRate / 100;
+                const vatDivisor = 1 + currentVatRate;
+
+                // CAPEX
+                const totalCapex = inputs.capexRegistration + inputs.capexOffice + inputs.capexEquipment + inputs.capexTech + inputs.capexLaunch;
+                const workingCapital = inputs.initialCapital - totalCapex;
+
+                // REVENUE
+                const salesBase = inputs.avgHousePrice * adjSalesVolume * (inputs.salesCommRate / 100);
+                const rentalBase = inputs.avgRentalPrice * adjRentalVolume * inputs.rentalCommMonths;
+                const baseRevenue = salesBase + rentalBase;
+
+                // VAT Logic
+                let totalGross, netRevenue, vatAmount, salesNet, rentalNet;
+                if (inputs.vatMode === 'include') {
+                    totalGross = baseRevenue;
+                    netRevenue = totalGross / vatDivisor;
+                    vatAmount = totalGross - netRevenue;
+                    salesNet = salesBase / vatDivisor;
+                    rentalNet = rentalBase / vatDivisor;
+                } else {
+                    netRevenue = baseRevenue;
+                    vatAmount = netRevenue * currentVatRate;
+                    totalGross = netRevenue + vatAmount;
+                    salesNet = salesBase;
+                    rentalNet = rentalBase;
+                }
+
+                // DISTRIBUTION
+                const companySharePercent = 100 - inputs.shareSales - inputs.shareListing - inputs.shareAdmin - inputs.shareManager - inputs.shareContent;
+                const distSales = netRevenue * (inputs.shareSales / 100);
+                const distListing = netRevenue * (inputs.shareListing / 100);
+                const distAdmin = netRevenue * (inputs.shareAdmin / 100);
+                const distManager = netRevenue * (inputs.shareManager / 100);
+                const distContent = netRevenue * (inputs.shareContent / 100);
+                const distCompany = netRevenue * (companySharePercent / 100);
+                const salesCompanyIncome = salesNet * (companySharePercent / 100);
+                const rentalCompanyIncome = rentalNet * (companySharePercent / 100);
+
+                // EXPENSES
+                const currentSalaries = 
+                    (inputs.salaryManagerRate * inputs.salaryManagerCount) +
+                    (inputs.salarySalesRate * inputs.salarySalesCount) +
+                    (inputs.salaryAdminRate * inputs.salaryAdminCount) +
+                    (inputs.salaryListingRate * inputs.salaryListingCount) +
+                    (inputs.salaryContentRate * inputs.salaryContentCount);
+                const additionalSalaries = inputs.newHires * inputs.avgNewSalary;
+                const totalSalaries = currentSalaries + additionalSalaries;
+                const fixedCosts = totalSalaries + inputs.officeRent + inputs.softwareCost + inputs.otherExpenses;
+                const totalExpenses = fixedCosts + adjMarketingBudget;
+
+                // PROFIT
+                const monthlyEBT = distCompany - totalExpenses;
+                
+                // 12-MONTH SIMULATION
+                const cfData = [];
+                const bepData = [];
+                let currentCash = workingCapital; 
+                let cumulativeRev = 0;
+                let cumulativeExp = 0;
+                let cumulativeEBT = 0;
+
+                for (let i = 1; i <= 12; i++) {
+                    const growthFactor = Math.pow(1 + (inputs.growthRate / 100), i - 1);
+                    const mNetRevenue = netRevenue * growthFactor; 
+                    const mDistCompany = mNetRevenue * (companySharePercent / 100);
+                    const mFlow = mDistCompany - totalExpenses; 
+                    currentCash += mFlow;
+                    cumulativeRev += mDistCompany;
+                    cumulativeExp += totalExpenses;
+                    cumulativeEBT += mFlow;
+                    cfData.push({ month: i, revenue: mDistCompany, expenses: totalExpenses, net: mFlow, cumulative: currentCash });
+                    bepData.push({ month: `M${i}`, revenue: cumulativeRev, expenses: cumulativeExp });
+                }
+
+                const annualEBTReal = cumulativeEBT;
+                let tax = calculateTax(annualEBTReal);
+                const annualNetProfit = annualEBTReal - tax;
+                const roi = (annualNetProfit / inputs.initialCapital) * 100;
+                let paybackPeriod = annualNetProfit > 0 ? inputs.initialCapital / (annualNetProfit/12) : Infinity;
+
+                // DIVIDEND (Year 1)
+                const dividendPool = annualNetProfit > 0 ? annualNetProfit * (inputs.dividendRate / 100) : 0;
+                
+                // Cash End Year 1 for 12-Month Table Footer (Post-Tax, Pre-Dividend as requested previously for clarity in flow, BUT user wants correct accumulation)
+                // Actually, the user asked "ทำไมเงินสดสะสมสิ้นปีที่1กระแสเงินสดเป็น ตัวเลขนั้นหละ ตรงนั้นอย่าพึ่งหักปันผลสิ"
+                // So the table footer should show: Cumulative Cash - Tax. (Dividend is deducted in the 5-Year table or separate section).
+                const year1CashAfterTax = cfData[11].cumulative - tax; 
+                const year1CashAfterDiv = year1CashAfterTax - dividendPool;
+
+                // 5-YEAR PROJECTION
+                const fiveYear = [];
+                // Start Year 2 with cash after Year 1 dividends
+                let prevYearCash = year1CashAfterDiv; 
+                
+                const y1RevTotal = cfData.reduce((acc, c) => acc + c.revenue, 0);
+                const y1ExpTotal = totalExpenses * 12;
+                let cumDiv = dividendPool;
+
+                // Year 1 Row for 5-Year Table
+                fiveYear.push({ 
+                    year: 1, revenue: y1RevTotal, expenses: y1ExpTotal, ebt: annualEBTReal, 
+                    tax: tax, netProfit: annualNetProfit, dividend: dividendPool, cashEnd: prevYearCash 
+                });
+
+                const annualGrowth = inputs.annualGrowthRate / 100;
+                const inflationRate = inputs.inflationRate / 100;
+
+                for (let y = 2; y <= 5; y++) {
+                    const rev = fiveYear[y-2].revenue * (1 + annualGrowth);
+                    const exp = fiveYear[y-2].expenses * (1 + inflationRate);
+                    const ebt = rev - exp;
+                    const yTax = calculateTax(ebt);
+                    const net = ebt - yTax;
+                    const div = net > 0 ? net * (inputs.dividendRate / 100) : 0;
+                    cumDiv += div;
+                    
+                    // Cash End = Prev Cash + Net Profit - Dividend
+                    const cash = prevYearCash + net - div;
+
+                    fiveYear.push({ year: y, revenue: rev, expenses: exp, ebt: ebt, tax: yTax, netProfit: net, dividend: div, cashEnd: cash });
+                    prevYearCash = cash;
+                }
+
+                // Marketing
+                const salesBudget = adjMarketingBudget * (inputs.marketingSplitPct / 100);
+                const rentBudget = adjMarketingBudget * ((100 - inputs.marketingSplitPct) / 100);
+                const leadsS = salesBudget / inputs.cplSale;
+                const qualS = leadsS * (inputs.qualifyRateSale / 100);
+                const closedS = qualS * (inputs.closeRateSale / 100);
+                const revS = closedS * inputs.avgHousePrice * (inputs.salesCommRate / 100); 
+                const leadsR = rentBudget / inputs.cplRent;
+                const qualR = leadsR * (inputs.qualifyRateRent / 100);
+                const closedR = qualR * (inputs.closeRateRent / 100);
+                const revR = closedR * inputs.avgRentalPrice * inputs.rentalCommMonths;
+                const marketingStats = {
+                    sales: { budget: salesBudget, leads: leadsS, qual: qualS, closed: closedS, rev: revS, roas: revS/salesBudget || 0, cpa: salesBudget/closedS || 0 },
+                    rent: { budget: rentBudget, leads: leadsR, qual: qualR, closed: closedR, rev: revR, roas: revR/rentBudget || 0, cpa: rentBudget/closedR || 0 },
+                    totalROAS: (revS + revR) / adjMarketingBudget || 0
+                };
+
+                let breakEvenRevenue = 0;
+                if (companySharePercent > 0) {
+                    const netRevenueNeeded = totalExpenses / (companySharePercent / 100);
+                    breakEvenRevenue = inputs.vatMode === 'include' ? netRevenueNeeded * vatDivisor : netRevenueNeeded;
+                }
+                const netMargin = (monthlyEBT / (distCompany || 1)) * 100;
+                const runwayMonths = currentCash > 0 ? currentCash / totalExpenses : 0;
+
+                let taxDetails = [];
+                let t1Base = Math.min(annualEBTReal, 300000); if(t1Base<0) t1Base=0;
+                taxDetails.push({ tier: '0 - 300,000', rate: '0%', base: t1Base, tax: 0 });
+                let t2Base = 0, t2Tax = 0;
+                if (annualEBTReal > 300000) { t2Base = Math.min(annualEBTReal - 300000, 2700000); t2Tax = t2Base * 0.15; }
+                taxDetails.push({ tier: '300,001 - 3M', rate: '15%', base: t2Base, tax: t2Tax });
+                let t3Base = 0, t3Tax = 0;
+                if (annualEBTReal > 3000000) { t3Base = annualEBTReal - 3000000; t3Tax = t3Base * 0.20; }
+                taxDetails.push({ tier: '> 3,000,000', rate: '20%', base: t3Base, tax: t3Tax });
+
+                setResults({
+                    totalCapex, workingCapital, totalGross, vatAmount, netRevenue,
+                    distSales, distListing, distAdmin, distManager, distContent, distCompany,
+                    totalExpenses, annualNetProfit, roi, paybackPeriod, breakEvenPoint: breakEvenRevenue,
+                    totalTax: tax, monthlyEBT, annualEBT: annualEBTReal, totalSalaries, companySharePercent,
+                    kpi: { netMargin: { val: netMargin, status: netMargin > 20 ? 'good' : netMargin > 0 ? 'warning' : 'bad' }, runway: { val: runwayMonths, status: runwayMonths > 12 ? 'good' : runwayMonths > 6 ? 'warning' : 'bad' } },
+                    runwayMonths, marketing: marketingStats, 
+                    dividends: { total: dividendPool, perFounderYear: dividendPool / 2, perFounderMonth: (dividendPool / 2) / 12, cumulative5Year: cumDiv },
+                    headcountImpact: { diffProfit: -additionalSalaries },
+                    year1RevenueSum: y1RevTotal, year1ExpenseSum: y1ExpTotal, 
+                    finalCashBalance: year1CashAfterTax, // Show Cash Before Dividend in 12-Month Table Footer
+                    taxDetails: taxDetails
+                });
+                setFiveYearData(fiveYear);
+                setCashFlowData(cfData);
+                setBepChartData(bepData);
+                setExpensePieData([{ name: 'เงินเดือน (Salary)', value: totalSalaries }, { name: 'การตลาด (Ads)', value: adjMarketingBudget }, { name: 'ค่าเช่า (Rent)', value: inputs.officeRent }, { name: 'Software', value: inputs.softwareCost }, { name: 'อื่นๆ (Other)', value: inputs.otherExpenses }]);
+                setRevenuePieData([{ name: 'ขาย (Sales)', value: salesCompanyIncome }, { name: 'เช่า (Rentals)', value: rentalCompanyIncome }]);
+            }, [inputs]);
+
+            const handleInputChange = (e) => setInputs(prev => ({ ...prev, [e.target.name]: parseFloat(e.target.value) || 0 }));
+            const toggleVatMode = () => setInputs(prev => ({ ...prev, vatMode: prev.vatMode === 'include' ? 'exclude' : 'include' }));
+            const formatCurrency = (num) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', maximumFractionDigits: 0 }).format(num || 0);
+            const formatNum = (num) => new Intl.NumberFormat('th-TH', { maximumFractionDigits: 1 }).format(num || 0);
+            const COLORS = { chart: ['#0f172a', '#d97706', '#64748b', '#059669', '#be123c'], revenue: ['#3b82f6', '#f59e0b'] };
+            
+            const capexItems = [{ label: 'จดทะเบียน (Registration)', name: 'capexRegistration' }, { label: 'ตกแต่งสนง. (Office Setup)', name: 'capexOffice' }, { label: 'อุปกรณ์ IT (IT Equip)', name: 'capexEquipment' }, { label: 'ระบบ Tech (System)', name: 'capexTech' }, { label: 'เปิดตัว/ตลาด (Launch)', name: 'capexLaunch' }];
+            const staffRoles = [ { id: 'Manager', label: 'ผู้จัดการ (Manager)', rateKey: 'salaryManagerRate', countKey: 'salaryManagerCount' }, { id: 'Sales', label: 'ทีมขาย (Sales)', rateKey: 'salarySalesRate', countKey: 'salarySalesCount' }, { id: 'Admin', label: 'แอดมิน (Admin)', rateKey: 'salaryAdminRate', countKey: 'salaryAdminCount' }, { id: 'Listing', label: 'Listing', rateKey: 'salaryListingRate', countKey: 'salaryListingCount' }, { id: 'Content', label: 'Content', rateKey: 'salaryContentRate', countKey: 'salaryContentCount' } ];
+
+            return (
+                <div className="bg-slate-100 min-h-screen font-sans text-slate-800 pb-10">
+                    <div className="bg-primary text-white p-5 shadow-lg mb-8">
+                        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-white/10 p-2 rounded-lg"><Icon path={icons.activity} size={24} className="text-white"/></div>
+                                <div><h1 className="text-2xl font-bold tracking-tight">Prime Axis Estate</h1><p className="text-sm text-slate-300">Financial Strategy Simulator</p></div>
+                            </div>
+                            <div className="mt-4 md:mt-0 flex gap-4 text-center">
+                                <div className="bg-white/10 px-5 py-2 rounded-lg backdrop-blur-md border border-white/10"><div className="text-xs text-slate-300 uppercase tracking-wide mb-1">Net Profit (Year 1)</div><div className="text-2xl font-bold text-success">{formatCurrency(results.annualNetProfit)}</div></div>
+                                <div className="bg-white/10 px-5 py-2 rounded-lg backdrop-blur-md border border-white/10"><div className="text-xs text-slate-300 uppercase tracking-wide mb-1">ROI</div><div className="text-2xl font-bold text-accent">{results.roi?.toFixed(1)}%</div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="max-w-7xl mx-auto px-4 -mt-12 mb-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="card p-4 flex flex-col justify-between border-t-4 border-success">
+                            <div className="flex items-center gap-2 mb-1"><span className={`traffic-light ${results.kpi.netMargin?.status==='good'?'bg-success':results.kpi.netMargin?.status==='warning'?'bg-accent':'bg-danger'}`}></span><span className="text-xs text-slate-500 font-bold uppercase">Net Margin</span></div>
+                            <div className="text-2xl font-bold text-slate-700">{results.kpi.netMargin?.val?.toFixed(1)}%</div>
+                        </div>
+                        <div className="card p-4 flex flex-col justify-between border-t-4 border-accent">
+                            <div className="flex items-center gap-2 mb-1"><span className={`traffic-light ${results.kpi.runway?.status==='good'?'bg-success':results.kpi.runway?.status==='warning'?'bg-accent':'bg-danger'}`}></span><span className="text-xs text-slate-500 font-bold uppercase">Cash Runway</span></div>
+                            <div className="text-2xl font-bold text-slate-700">{results.runwayMonths?.toFixed(1)} <span className="text-sm font-normal text-slate-400">Months</span></div>
+                        </div>
+                        <div className="card p-4 flex flex-col justify-between border-t-4 border-blue-500">
+                            <div className="flex items-center gap-2 mb-1"><span className="traffic-light bg-blue-500"></span><span className="text-xs text-slate-500 font-bold uppercase">Payback Period</span></div>
+                            <div className="text-2xl font-bold text-slate-700">{results.paybackPeriod === Infinity ? 'N/A' : results.paybackPeriod?.toFixed(1)} <span className="text-sm font-normal text-slate-400">Months</span></div>
+                        </div>
+                        <div className="card p-4 flex flex-col justify-between border-t-4 border-purple-500">
+                            <div className="flex items-center gap-2 mb-1"><span className="traffic-light bg-purple-500"></span><span className="text-xs text-slate-500 font-bold uppercase">Total ROAS</span></div>
+                            <div className="text-2xl font-bold text-slate-700">{results.marketing.totalROAS?.toFixed(1)}x</div>
+                        </div>
+                    </div>
+
+                    <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 xl:grid-cols-12 gap-6">
+                        <div className="xl:col-span-3 space-y-5">
+                            <div className="card p-5">
+                                <h3 className="card-title mb-4 border-b pb-2"><Icon path={icons.settings} size={16} className="text-slate-400"/> Scenario Analysis (What-if)</h3>
+                                <div className="space-y-4">
+                                    {[{l:'ยอดขาย (Sales Vol)',n:'sensSalesVol',min:-50,max:50,step:5},{l:'งบโฆษณา (Ad Budget)',n:'sensAdBudget',min:-50,max:100,step:10},{l:'VAT Rate',n:'sensVatRate',min:0,max:10,step:1}].map(f=>(
+                                        <div key={f.n}><div className="flex justify-between text-xs mb-1 text-slate-600"><span>{f.l}</span><span className="font-bold">{inputs[f.n]}%</span></div><input type="range" name={f.n} min={f.min} max={f.max} step={f.step} value={inputs[f.n]} onChange={handleInputChange} className="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer accent-secondary"/></div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="card p-5">
+                                <h3 className="card-title mb-3 border-b pb-2"><Icon path={icons.briefcase} size={16} className="text-slate-400"/> งบลงทุน (CAPEX)</h3>
+                                {capexItems.map(i=><div key={i.name} className="flex justify-between items-center mb-2"><label className="text-xs text-slate-500">{i.label}</label><input type="number" name={i.name} value={inputs[i.name]} onChange={handleInputChange} className="w-24 border rounded px-2 py-1 text-right text-xs bg-slate-50 focus:outline-none focus:ring-1 focus:ring-primary"/></div>)}
+                                <div className="pt-3 border-t mt-2 flex justify-between text-xs font-bold text-emerald-700"><span>Working Capital:</span><span>{formatCurrency(results.workingCapital)}</span></div>
+                            </div>
+                            <div className="card p-5">
+                                <div className="flex justify-between items-center mb-4 border-b pb-2"><h3 className="card-title"><Icon path={icons.home} size={16} className="text-slate-400"/> รายได้ (Revenue)</h3><button onClick={toggleVatMode} className={`text-[10px] px-2 py-1 rounded font-bold transition-colors ${inputs.vatMode==='include'?'bg-primary text-white':'bg-slate-200 text-slate-600'}`}>VAT {inputs.vatMode==='include'?'ในตัว (Inc)':'แยก (Exc)'}</button></div>
+                                <div className="space-y-4">
+                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100"><div className="flex justify-between text-xs mb-2 font-bold text-accent"><span>ขาย (Sales)</span><span>{inputs.salesVolume} Unit/Mo</span></div><input type="range" name="salesVolume" min="0" max="10" step="0.5" value={inputs.salesVolume} onChange={handleInputChange} className="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer accent-accent mb-3"/><div className="flex gap-2"><div className="w-full"><label className="text-[9px] text-slate-400 block mb-0.5">Price</label><input type="number" name="avgHousePrice" value={inputs.avgHousePrice} onChange={handleInputChange} className="w-full border rounded px-1 py-1 text-xs outline-none focus:ring-1 focus:ring-accent" /></div><div className="w-16"><label className="text-[9px] text-slate-400 block mb-0.5">Comm (%)</label><input type="number" name="salesCommRate" value={inputs.salesCommRate} onChange={handleInputChange} className="w-full border rounded px-1 py-1 text-xs text-center outline-none focus:ring-1 focus:ring-accent" /></div></div></div>
+                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100"><div className="flex justify-between text-xs mb-2 font-bold text-primary"><span>เช่า (Rentals)</span><span>{inputs.rentalVolume} Case/Mo</span></div><input type="range" name="rentalVolume" min="0" max="20" step="1" value={inputs.rentalVolume} onChange={handleInputChange} className="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer accent-primary mb-3"/><div className="flex gap-2"><div className="w-full"><label className="text-[9px] text-slate-400 block mb-0.5">Price</label><input type="number" name="avgRentalPrice" value={inputs.avgRentalPrice} onChange={handleInputChange} className="w-full border rounded px-1 py-1 text-xs outline-none focus:ring-1 focus:ring-primary" /></div><div className="w-16"><label className="text-[9px] text-slate-400 block mb-0.5">Comm (Mo)</label><input type="number" name="rentalCommMonths" value={inputs.rentalCommMonths} onChange={handleInputChange} className="w-full border rounded px-1 py-1 text-xs text-center outline-none focus:ring-1 focus:ring-primary" /></div></div></div>
+                                </div>
+                            </div>
+                             <div className="card p-5">
+                                <h3 className="card-title mb-3 border-b pb-2"><Icon path={icons.users} size={16} className="text-slate-400"/> ต้นทุน & คน (Cost & Staff)</h3>
+                                {staffRoles.map(r=><div key={r.id} className="grid grid-cols-12 gap-1 items-center mb-2"><div className="col-span-5 text-xs text-slate-600">{r.label}</div><div className="col-span-3"><input type="number" name={r.rateKey} value={inputs[r.rateKey]} onChange={handleInputChange} className="w-full border rounded px-1 py-1 text-[10px] text-right bg-slate-50"/></div><div className="col-span-2"><input type="number" name={r.countKey} value={inputs[r.countKey]} onChange={handleInputChange} className="w-full border rounded px-1 py-1 text-[10px] text-center bg-slate-50"/></div><div className="col-span-2 text-[10px] text-right font-bold text-slate-700">{formatCurrency(inputs[r.rateKey]*inputs[r.countKey]).replace('฿','')}</div></div>)}
+                                <div className="h-px bg-slate-100 my-3"></div>
+                                <div className="flex justify-between items-center mb-2"><label className="text-xs font-bold text-primary">Ads Budget</label><input type="number" name="marketingBudget" value={inputs.marketingBudget} onChange={handleInputChange} className="w-24 border border-blue-200 text-blue-900 font-bold rounded px-2 py-1 text-xs text-right bg-blue-50" /></div>
+                                <div className="flex justify-between items-center mb-2"><label className="text-xs text-slate-600">Office Rent</label><input type="number" name="officeRent" value={inputs.officeRent} onChange={handleInputChange} className="w-24 border rounded px-2 py-1 text-xs text-right bg-slate-50" /></div>
+                                <div className="flex justify-between items-center mb-2"><label className="text-xs text-slate-600">Software</label><input type="number" name="softwareCost" value={inputs.softwareCost} onChange={handleInputChange} className="w-24 border rounded px-2 py-1 text-xs text-right bg-slate-50" /></div>
+                                <div className="flex justify-between items-center"><label className="text-xs text-slate-600">Other</label><input type="number" name="otherExpenses" value={inputs.otherExpenses} onChange={handleInputChange} className="w-24 border rounded px-2 py-1 text-xs text-right bg-slate-50" /></div>
+                            </div>
+                            <div className="card p-5">
+                                <h3 className="card-title mb-3 border-b pb-2"><Icon path={icons.settings} size={16} className="text-slate-400"/> สัดส่วนคอมฯ (Commission %)</h3>
+                                {['shareSales','shareListing','shareManager','shareContent','shareAdmin'].map(k=><div key={k} className="flex justify-between items-center mb-2"><label className="text-xs capitalize text-slate-600">{k.replace('share','')}</label><div className="flex items-center"><input type="number" name={k} value={inputs[k]} onChange={handleInputChange} className="w-12 border rounded text-center text-xs bg-slate-50 py-1 mr-1"/>%</div></div>)}
+                                <div className="border-t pt-2 flex justify-between font-bold text-slate-800 text-xs mt-2"><span>Company (Auto)</span><span>{results.companySharePercent.toFixed(1)}%</span></div>
+                            </div>
+                        </div>
+
+                        <div className="xl:col-span-5 space-y-6">
+                            <div className="card p-6">
+                                <h4 className="card-title mb-5"><Icon path={icons.fileText} size={16} className="text-slate-400"/> Revenue Flow (Monthly)</h4>
+                                <div className="space-y-6 relative pl-5 border-l-2 border-slate-100">
+                                    <div className="relative"><div className="absolute -left-[27px] top-1 w-4 h-4 bg-slate-300 rounded-full border-4 border-white"></div><div className="flex justify-between text-sm"><span className="text-slate-500">1. ยอดรับรวม (Total Gross)</span><span className="font-bold text-slate-800">{formatCurrency(results.totalGross)}</span></div></div>
+                                    <div className="relative"><div className="absolute -left-[27px] top-1 w-4 h-4 bg-danger rounded-full border-4 border-white"></div><div className="flex justify-between text-sm text-danger"><span className="flex items-center gap-1">หัก VAT (7%)</span><span>({formatCurrency(results.vatAmount)})</span></div></div>
+                                    <div className="relative"><div className="absolute -left-[27px] top-1 w-4 h-4 bg-primary rounded-full border-4 border-white"></div><div className="flex justify-between text-sm mb-3"><span className="font-bold text-primary">2. ยอดสุทธิ (Net Revenue)</span><span className="font-bold text-primary">{formatCurrency(results.netRevenue)}</span></div>
+                                        <div className="grid grid-cols-2 gap-2 text-[10px]">
+                                            <div className="bg-slate-50 p-2 rounded border border-slate-200"><div className="flex justify-between mb-1 text-slate-600"><span>Company ({results.companySharePercent.toFixed(1)}%)</span><b>{formatCurrency(results.distCompany)}</b></div><div className="h-1.5 bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-slate-800" style={{width: `${results.companySharePercent}%`}}></div></div></div>
+                                            <div className="bg-amber-50 p-2 rounded border border-amber-100"><div className="flex justify-between mb-1 text-amber-700"><span>Sales ({inputs.shareSales}%)</span><b>{formatCurrency(results.distSales)}</b></div><div className="h-1.5 bg-amber-200 rounded-full overflow-hidden"><div className="h-full bg-amber-500" style={{width: `${inputs.shareSales}%`}}></div></div></div>
+                                            <div className="bg-blue-50 p-2 rounded border border-blue-100"><div className="flex justify-between mb-1 text-blue-700"><span>Listing ({inputs.shareListing}%)</span><b>{formatCurrency(results.distListing)}</b></div><div className="h-1.5 bg-blue-200 rounded-full overflow-hidden"><div className="h-full bg-blue-500" style={{width: '60%'}}></div></div></div>
+                                            <div className="bg-purple-50 p-2 rounded border border-purple-100"><div className="flex justify-between mb-1 text-purple-700"><span>Manager ({inputs.shareManager}%)</span><b>{formatCurrency(results.distManager)}</b></div><div className="h-1.5 bg-purple-200 rounded-full overflow-hidden"><div className="h-full bg-purple-500" style={{width: '60%'}}></div></div></div>
+                                            <div className="bg-pink-50 p-2 rounded border border-pink-100"><div className="flex justify-between mb-1 text-pink-700"><span>Content ({inputs.shareContent}%)</span><b>{formatCurrency(results.distContent)}</b></div><div className="h-1.5 bg-pink-200 rounded-full overflow-hidden"><div className="h-full bg-pink-500" style={{width: '60%'}}></div></div></div>
+                                            <div className="bg-indigo-50 p-2 rounded border border-indigo-100"><div className="flex justify-between mb-1 text-indigo-700"><span>Admin ({inputs.shareAdmin}%)</span><b>{formatCurrency(results.distAdmin)}</b></div><div className="h-1.5 bg-indigo-200 rounded-full overflow-hidden"><div className="h-full bg-indigo-500" style={{width: '60%'}}></div></div></div>
+                                        </div>
+                                    </div>
+                                    <div className="relative pt-4 border-t border-dashed mt-2"><div className="absolute -left-[27px] top-5 w-4 h-4 bg-success rounded-full border-4 border-white"></div><div className="flex justify-between text-xs text-slate-600 mb-1"><span>รายรับบริษัท (Company):</span><b>{formatCurrency(results.distCompany)}</b></div><div className="flex justify-between text-xs text-danger mb-2"><span>- ค่าใช้จ่ายรวม (Expenses):</span><b>({formatCurrency(results.totalExpenses)})</b></div><div className="flex justify-between text-base font-bold text-success mt-2 pt-2 border-t border-slate-100"><span>= กำไรสุทธิ/ด. (Net Profit)</span><span>{formatCurrency(results.monthlyEBT)}</span></div></div>
+                                </div>
+                            </div>
+                            
+                            <div className="card overflow-hidden">
+                                <div className="card-header">
+                                    <h4 className="card-title"><Icon path={icons.building2} size={16} className="text-slate-500"/> ภาษีนิติบุคคล (Corporate Tax)</h4>
+                                    <div className="text-xs font-semibold bg-emerald-100 text-emerald-700 px-2 py-1 rounded">กำไรสุทธิก่อนภาษี: {formatCurrency(results.annualEBT)}</div>
+                                </div>
+                                <div className="p-0">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
+                                            <tr><th className="py-3 pl-6 text-left font-medium">ช่วงกำไร (Net Profit)</th><th className="py-3 text-center font-medium">อัตรา</th><th className="py-3 pr-6 text-right font-medium">ภาษีที่ต้องจ่าย</th></tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {results.taxDetails.map((item, index) => (
+                                                <tr key={index} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="py-3 pl-6 text-slate-600">{item.tier}</td><td className="py-3 text-center"><span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs font-bold">{item.rate}</span></td><td className="py-3 pr-6 text-right font-medium text-slate-800">{formatCurrency(item.tax)}</td>
+                                                </tr>
+                                            ))}
+                                            <tr className="bg-slate-50"><td className="py-3 pl-6 font-bold text-slate-800" colSpan="2">รวมภาษีทั้งสิ้น (Total Tax)</td><td className="py-3 pr-6 text-right font-bold text-danger">{formatCurrency(results.totalTax)}</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div className="card p-6">
+                                <h4 className="card-title mb-5"><Icon path={icons.target} size={16} className="text-primary"/> Marketing Funnel & Budget</h4>
+                                <div className="mb-5 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                    <div className="flex justify-between text-xs font-bold mb-2">
+                                        <span className="text-accent">Sales Budget {inputs.marketingSplitPct}%</span>
+                                        <span className="text-slate-600">{formatCurrency(results.marketing.sales?.budget)} | {formatCurrency(results.marketing.rent?.budget)}</span>
+                                        <span className="text-primary">Rent Budget {100-inputs.marketingSplitPct}%</span>
+                                    </div>
+                                    <input type="range" name="marketingSplitPct" min="0" max="100" step="5" value={inputs.marketingSplitPct} onChange={handleInputChange} className="w-full h-2 bg-gradient-to-r from-amber-400 to-slate-800 rounded-lg cursor-pointer appearance-none"/>
+                                </div>
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-3">
+                                        <h5 className="text-[10px] font-bold text-accent uppercase border-b border-amber-100 pb-1">ฝั่งขาย (Sales)</h5>
+                                        <div className="flex justify-between text-[10px] items-center"><label class="text-slate-500">CPL (Cost/Lead)</label><input type="number" name="cplSale" value={inputs.cplSale} onChange={handleInputChange} className="w-14 border rounded text-right px-1 bg-amber-50"/></div>
+                                        <div className="flex justify-between text-[10px] items-center"><label class="text-slate-500">Conv. Rate %</label><input type="number" name="closeRateSale" value={inputs.closeRateSale} onChange={handleInputChange} className="w-12 border rounded text-right px-1 bg-amber-50"/></div>
+                                        <div className="bg-amber-50 p-3 rounded-lg text-[10px] space-y-1.5 border border-amber-100">
+                                            <div className="flex justify-between"><span>Leads:</span><b>{parseInt(results.marketing.sales?.leads)}</b></div>
+                                            <div className="flex justify-between"><span>Closed:</span><b>{results.marketing.sales?.closed?.toFixed(1)}</b></div>
+                                            <div className="flex justify-between text-accent font-bold border-t border-amber-200 pt-1 mt-1"><span>ROAS:</span><span>{results.marketing.sales?.roas?.toFixed(1)}x</span></div>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <h5 className="text-[10px] font-bold text-primary uppercase border-b border-slate-200 pb-1">ฝั่งเช่า (Rentals)</h5>
+                                        <div className="flex justify-between text-[10px] items-center"><label class="text-slate-500">CPL (Cost/Lead)</label><input type="number" name="cplRent" value={inputs.cplRent} onChange={handleInputChange} className="w-14 border rounded text-right px-1 bg-slate-50"/></div>
+                                        <div className="flex justify-between text-[10px] items-center"><label class="text-slate-500">Conv. Rate %</label><input type="number" name="closeRateRent" value={inputs.closeRateRent} onChange={handleInputChange} className="w-12 border rounded text-right px-1 bg-slate-50"/></div>
+                                        <div className="bg-slate-50 p-3 rounded-lg text-[10px] space-y-1.5 border border-slate-200">
+                                            <div className="flex justify-between"><span>Leads:</span><b>{parseInt(results.marketing.rent?.leads)}</b></div>
+                                            <div className="flex justify-between"><span>Closed:</span><b>{results.marketing.rent?.closed?.toFixed(1)}</b></div>
+                                            <div className="flex justify-between text-primary font-bold border-t border-slate-200 pt-1 mt-1"><span>ROAS:</span><span>{results.marketing.rent?.roas?.toFixed(1)}x</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="xl:col-span-4 space-y-6">
+                            <div className="card p-5 h-64 flex flex-col">
+                                <h4 className="card-title mb-2"><Icon path={icons.pieChart} size={16} className="text-slate-400"/> รายได้สุทธิบริษัท (Net Income Mix)</h4>
+                                <div className="flex-1 flex items-center">
+                                    <div className="w-1/2 h-full"><ResponsiveContainer><PieChart><Pie data={revenuePieData} innerRadius={35} outerRadius={50} paddingAngle={5} dataKey="value" stroke="none">{revenuePieData.map((e,i)=><Cell key={i} fill={COLORS.revenue[i]}/>)}</Pie><Tooltip formatter={formatCurrency}/></PieChart></ResponsiveContainer></div>
+                                    <div className="w-1/2 text-xs space-y-2">{revenuePieData.map((e,i)=><div key={i}><div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full" style={{background:COLORS.revenue[i]}}></div><span className="text-slate-500">{e.name}</span></div><div className="pl-3 font-bold text-slate-700">{formatCurrency(e.value)}</div></div>)}</div>
+                                </div>
+                            </div>
+                            <div className="card p-5 h-72 flex flex-col">
+                                <h4 className="card-title mb-2"><Icon path={icons.pieChart} size={16} className="text-slate-400"/> สัดส่วนค่าใช้จ่าย (Expenses)</h4>
+                                <div className="flex-1 flex items-center">
+                                    <div className="w-1/2 h-full"><ResponsiveContainer><PieChart><Pie data={expensePieData} innerRadius={40} outerRadius={60} paddingAngle={5} dataKey="value" stroke="none">{expensePieData.map((e,i)=><Cell key={i} fill={COLORS.chart[i%COLORS.chart.length]}/>)}</Pie><Tooltip formatter={formatCurrency}/></PieChart></ResponsiveContainer></div>
+                                    <div className="w-1/2 text-xs space-y-2 overflow-y-auto max-h-full custom-scrollbar pr-2">{expensePieData.map((e,i)=><div key={i}><div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full" style={{background:COLORS.chart[i%COLORS.chart.length]}}></div><span className="truncate text-slate-500">{e.name}</span></div><div className="pl-3 font-bold text-slate-700">{formatCurrency(e.value)} <span className="text-slate-400 font-normal">({((e.value/Math.max(1,results.totalExpenses))*100).toFixed(0)}%)</span></div></div>)}</div>
+                                </div>
+                            </div>
+                            <div className="card p-5 h-64">
+                                <h4 className="card-title mb-2"><Icon path={icons.refreshCw} size={16} className="text-slate-400"/> Break-even Tracker</h4>
+                                <ResponsiveContainer><ComposedChart data={bepChartData}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="month" tick={{fontSize:10}}/><YAxis tickFormatter={(v)=>`${v/1000}k`} tick={{fontSize:10}} width={30}/><Tooltip formatter={formatCurrency}/><Area type="monotone" dataKey="revenue" name="รายได้สะสม" fill="#e2e8f0" stroke="#334155"/><Line type="monotone" dataKey="expenses" name="รายจ่ายสะสม" stroke="#dc2626" strokeWidth={2} dot={false}/></ComposedChart></ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-6">
+                        <div className="card overflow-hidden">
+                             <div className="card-header">
+                                <h4 className="card-title"><Icon path={icons.table} size={16} className="text-slate-400"/> กระแสเงินสด 12 เดือน (Operating Cash Flow)</h4>
+                                <div className="flex items-center gap-1 text-xs"><Icon path={icons.trendingUp} size={12} className="text-success"/><select name="growthRate" value={inputs.growthRate} onChange={handleInputChange} className="bg-transparent font-bold outline-none text-slate-700"><option value="0">โต 0%</option><option value="5">โต 5%</option><option value="10">โต 10%</option></select></div>
+                            </div>
+                            <div className="overflow-x-auto p-0">
+                                <table className="w-full text-xs text-right border-collapse">
+                                    <thead className="bg-slate-50 text-slate-600 font-medium border-b border-slate-200"><tr><th className="py-3 px-3 text-center">เดือน (Month)</th><th className="px-3">รายได้สุทธิ (Net Revenue)</th><th className="px-3">ค่าใช้จ่าย (Expenses)</th><th className="px-3">กำไรก่อนภาษี (EBT)</th><th className="px-3">ภาษี (Tax)</th><th className="px-3 text-success">กำไรสุทธิ (Net Profit)</th><th className="px-3 text-primary">เงินสดสะสม (Cash)</th></tr></thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        <tr className="bg-slate-50 italic text-slate-400"><td className="text-center py-2">Start</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td className="pr-3 font-bold text-slate-600">{formatCurrency(results.workingCapital)}</td></tr>
+                                        {cashFlowData.map((row, i) => (
+                                            <tr key={i} className="hover:bg-slate-50">
+                                                <td className="text-center py-2 text-slate-400">{row.month}</td>
+                                                <td className="text-success font-medium">{formatCurrency(row.revenue)}</td>
+                                                <td className="text-danger">{formatCurrency(row.expenses)}</td>
+                                                <td className="text-slate-600">{formatCurrency(row.net)}</td>
+                                                <td className="text-slate-300">-</td>
+                                                <td className="font-bold text-slate-700">{formatCurrency(row.net)}</td>
+                                                <td className="pr-2 font-bold text-primary">{formatCurrency(row.cumulative)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    <tfoot className="bg-slate-50 border-t-2 border-slate-200 font-bold text-slate-800">
+                                        <tr><td className="py-3 text-center">รวมปี 1</td><td className="text-success">{formatCurrency(results.year1RevenueSum)}</td><td className="text-danger">{formatCurrency(results.year1ExpenseSum)}</td><td className="text-primary">{formatCurrency(results.annualEBT)}</td><td className="text-danger">({formatCurrency(results.totalTax)})</td><td className="text-success">{formatCurrency(results.annualNetProfit)}</td><td className="pr-2 text-primary">{formatCurrency(results.finalCashBalance)}</td></tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-6">
+                        <div className="card p-5">
+                            <div className="flex justify-between items-center mb-4 border-b pb-2">
+                                 <h4 className="card-title text-sm flex gap-2"><Icon path={icons.banknote} size={16} className="text-success"/> นโยบายปันผล (Dividend Policy)</h4>
+                                 <div className="flex items-center gap-2">
+                                     <span className="text-xs font-bold text-slate-600">Payout: {inputs.dividendRate}%</span>
+                                     <input type="range" name="dividendRate" min="0" max="100" step="5" value={inputs.dividendRate} onChange={handleInputChange} className="w-24 h-1.5 bg-slate-200 rounded-lg cursor-pointer accent-success"/>
+                                 </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                                <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+                                    <div className="text-xs text-emerald-700 mb-1 font-bold uppercase tracking-wide">เงินปันผลรวม (Total Dividend)</div>
+                                    <div className="text-2xl font-bold text-emerald-800">{formatCurrency(results.dividends.total)}</div>
+                                    <div className="text-[10px] text-emerald-600 mt-1">จ่ายจากกำไรสุทธิปีที่ 1</div>
+                                </div>
+                                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                                    <div className="text-xs text-blue-700 mb-1 font-bold uppercase tracking-wide">ต่อคน/ปี (Founder Share)</div>
+                                    <div className="text-2xl font-bold text-blue-800">{formatCurrency(results.dividends.perFounderYear)}</div>
+                                    <div className="text-[10px] text-blue-600 mt-1">สำหรับผู้ก่อตั้ง 2 ท่าน</div>
+                                </div>
+                                <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                                    <div className="text-xs text-indigo-700 mb-1 font-bold uppercase tracking-wide">เฉลี่ยต่อเดือน (Monthly Avg)</div>
+                                    <div className="text-2xl font-bold text-indigo-800">{formatCurrency(results.dividends.perFounderMonth)}</div>
+                                    <div className="text-[10px] text-indigo-600 mt-1">รายได้เสริมต่อคน</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-10">
+                        <div className="card overflow-hidden">
+                            <div className="card-header bg-primary border-none">
+                                <h3 className="card-title text-white"><Icon path={icons.trendingUp} size={18} className="text-accent"/> 5-Year Projection (ประมาณการ 5 ปี)</h3>
+                                <div className="flex items-center gap-4 text-xs text-white">
+                                    <div className="flex items-center gap-1"><span>Inflation:</span><select name="inflationRate" value={inputs.inflationRate} onChange={handleInputChange} className="bg-slate-700 rounded px-1 outline-none text-white cursor-pointer"><option value="3">3%</option><option value="5">5%</option><option value="7">7%</option></select></div>
+                                    <div className="flex items-center gap-1"><span>Growth:</span><select name="annualGrowthRate" value={inputs.annualGrowthRate} onChange={handleInputChange} className="bg-slate-700 rounded px-1 outline-none text-white cursor-pointer"><option value="10">10%</option><option value="15">15%</option><option value="20">20%</option></select></div>
+                                </div>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-right">
+                                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-200"><tr><th className="px-4 py-3 text-left">Year</th><th className="px-4">Revenue</th><th className="px-4">Expense</th><th className="px-4">EBT</th><th className="px-4">Tax</th><th className="px-4 text-success">Net Profit</th><th className="px-4 text-danger">Dividend</th><th className="px-4 text-primary">Cash End</th></tr></thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {fiveYearData.map((y, i) => (
+                                            <tr key={y.year} className="hover:bg-slate-50">
+                                                <td className="px-4 py-3 text-left font-medium text-slate-700">Y{y.year} {i===0 && <span className="text-[10px] bg-slate-200 px-1 rounded ml-1 text-slate-500 font-normal">Base</span>}</td>
+                                                <td className="px-4">{formatCurrency(y.revenue)}</td><td className="px-4 text-slate-500">{formatCurrency(y.expenses)}</td><td className="px-4 font-medium">{formatCurrency(y.ebt)}</td><td className="px-4 text-danger">({formatCurrency(y.tax)})</td><td className="px-4 font-bold text-success bg-emerald-50/30">{formatCurrency(y.netProfit)}</td><td className="px-4 text-danger">({formatCurrency(y.dividend)})</td><td className="px-4 font-bold text-primary bg-blue-50/30">{formatCurrency(y.cashEnd)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                <div className="bg-slate-50 px-4 py-2 text-xs text-slate-400 text-right border-t border-slate-200">
+                                    *สมมติฐาน: รายได้เติบโตตามอัตราที่เลือก ({inputs.annualGrowthRate}%), ค่าใช้จ่ายเพิ่มขึ้นตามเงินเฟ้อ {inputs.inflationRate}% ต่อปี
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<FinancialDashboard />);
+    </script>
+</body>
+</html>
