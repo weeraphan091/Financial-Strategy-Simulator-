@@ -67,11 +67,12 @@
             table: '<path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/>',
             refreshCw: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
             trendingUp: '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
-            settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+            settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
             target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
             banknote: '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
             clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
             briefcase: '<rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+            megaphone: '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>'
         };
 
         const FinancialDashboard = () => {
@@ -207,12 +208,12 @@
                 const annualEBTReal = cumulativeEBT;
                 let tax = calculateTax(annualEBTReal);
                 const annualNetProfit = annualEBTReal - tax;
+                const year1CashEnd = cfData[11].cumulative - tax; 
                 const roi = (annualNetProfit / inputs.initialCapital) * 100;
                 let paybackPeriod = annualNetProfit > 0 ? inputs.initialCapital / (annualNetProfit/12) : Infinity;
 
                 // DIVIDEND (Year 1)
                 const dividendPool = annualNetProfit > 0 ? annualNetProfit * (inputs.dividendRate / 100) : 0;
-                const year1CashEnd = cfData[11].cumulative - tax; 
                 const year1CashAfterDiv = year1CashEnd - dividendPool;
 
                 // 5-YEAR PROJECTION
@@ -343,7 +344,7 @@
                     <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 xl:grid-cols-12 gap-6">
                         <div className="xl:col-span-3 space-y-5">
                             <div className="card p-5">
-                                <h3 className="card-title mb-3 border-b pb-2"><Icon path={icons.settings} size={16} className="text-slate-400"/> Scenario Analysis (What-if)</h3>
+                                <h3 className="card-title mb-4 border-b pb-2"><Icon path={icons.settings} size={16} className="text-slate-400"/> Scenario Analysis (What-if)</h3>
                                 <div className="space-y-4">
                                     {[{l:'ยอดขาย (Sales Vol)',n:'sensSalesVol',min:-50,max:50,step:5},{l:'งบโฆษณา (Ad Budget)',n:'sensAdBudget',min:-50,max:100,step:10},{l:'VAT Rate',n:'sensVatRate',min:0,max:10,step:1}].map(f=>(
                                         <div key={f.n}><div className="flex justify-between text-xs mb-1 text-slate-600"><span>{f.l}</span><span className="font-bold">{inputs[f.n]}%</span></div><input type="range" name={f.n} min={f.min} max={f.max} step={f.step} value={inputs[f.n]} onChange={handleInputChange} className="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer accent-secondary"/></div>
@@ -381,6 +382,26 @@
                         </div>
 
                         <div className="xl:col-span-5 space-y-6">
+                            
+                            {/* Break Even Summary Card */}
+                            <div className="card p-5">
+                                <h4 className="card-title mb-3 border-b pb-2"><Icon path={icons.refreshCw} size={16} className="text-accent"/> จุดคุ้มทุน (Break-Even Analysis)</h4>
+                                <div className="text-center py-4 bg-slate-50 rounded-lg border border-slate-200 mb-3">
+                                    <div className="text-xs text-slate-500 mb-1">รายได้รวมขั้นต่ำที่ต้องการ/เดือน</div>
+                                    <div className="text-2xl font-bold text-accent">{formatCurrency(results.breakEvenPoint)}</div>
+                                </div>
+                                <div className="space-y-2 text-xs">
+                                    <div className="flex justify-between items-center p-2 bg-slate-50 rounded border border-slate-100">
+                                        <span className="text-slate-600">ต้องขายบ้าน (Sales):</span>
+                                        <span className="font-bold text-slate-800">{Math.ceil(results.breakEvenPoint / inputs.avgHousePrice)} หลัง (Units)</span>
+                                    </div>
+                                    <div className="flex justify-between items-center p-2 bg-slate-50 rounded border border-slate-100">
+                                        <span className="text-slate-600">หรือ ต้องปล่อยเช่า (Rentals):</span>
+                                        <span className="font-bold text-slate-800">{Math.ceil(results.breakEvenPoint / (inputs.avgRentalPrice * inputs.rentalCommMonths))} เคส (Cases)</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="card p-6">
                                 <h4 className="card-title mb-5"><Icon path={icons.fileText} size={16} className="text-slate-400"/> Revenue Flow (Monthly)</h4>
                                 <div className="space-y-6 relative pl-5 border-l-2 border-slate-100">
@@ -492,7 +513,7 @@
                                         <tr className="bg-slate-50 italic text-slate-400"><td className="text-center py-2">Start</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td className="pr-3 font-bold text-slate-600">{formatCurrency(results.workingCapital)}</td></tr>
                                         {cashFlowData.map((row, i) => (
                                             <tr key={i} className="hover:bg-slate-50">
-                                                <td className="text-center py-2 text-slate-400">{row.month}</td>
+                                                <td className="text-center py-2 text-slate-500">{row.month}</td>
                                                 <td className="text-success font-medium">{formatCurrency(row.revenue)}</td>
                                                 <td className="text-danger">{formatCurrency(row.expenses)}</td>
                                                 <td className="text-slate-600">{formatCurrency(row.net)}</td>
