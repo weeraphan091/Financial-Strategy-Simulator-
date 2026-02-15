@@ -72,7 +72,6 @@
             banknote: '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
             clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
             briefcase: '<rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
-            megaphone: '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>'
         };
 
         const FinancialDashboard = () => {
@@ -80,7 +79,7 @@
                 vatMode: 'include',
                 growthRate: 0, 
                 annualGrowthRate: 15, 
-                inflationRate: 5, // Default inflation
+                inflationRate: 5, 
                 initialCapital: 2000000,
                 capexRegistration: 20000, capexOffice: 120000, capexEquipment: 100000, capexTech: 60000, capexLaunch: 50000,
                 avgHousePrice: 7000000, salesVolume: 3, salesCommRate: 5,             
@@ -213,23 +212,16 @@
 
                 // DIVIDEND (Year 1)
                 const dividendPool = annualNetProfit > 0 ? annualNetProfit * (inputs.dividendRate / 100) : 0;
-                
-                // Cash End Year 1 for 12-Month Table Footer (Post-Tax, Pre-Dividend as requested previously for clarity in flow, BUT user wants correct accumulation)
-                // Actually, the user asked "ทำไมเงินสดสะสมสิ้นปีที่1กระแสเงินสดเป็น ตัวเลขนั้นหละ ตรงนั้นอย่าพึ่งหักปันผลสิ"
-                // So the table footer should show: Cumulative Cash - Tax. (Dividend is deducted in the 5-Year table or separate section).
-                const year1CashAfterTax = cfData[11].cumulative - tax; 
-                const year1CashAfterDiv = year1CashAfterTax - dividendPool;
+                const year1CashEnd = cfData[11].cumulative - tax; 
+                const year1CashAfterDiv = year1CashEnd - dividendPool;
 
                 // 5-YEAR PROJECTION
                 const fiveYear = [];
-                // Start Year 2 with cash after Year 1 dividends
-                let prevYearCash = year1CashAfterDiv; 
-                
+                let prevYearCash = year1CashAfterDiv;
                 const y1RevTotal = cfData.reduce((acc, c) => acc + c.revenue, 0);
                 const y1ExpTotal = totalExpenses * 12;
                 let cumDiv = dividendPool;
 
-                // Year 1 Row for 5-Year Table
                 fiveYear.push({ 
                     year: 1, revenue: y1RevTotal, expenses: y1ExpTotal, ebt: annualEBTReal, 
                     tax: tax, netProfit: annualNetProfit, dividend: dividendPool, cashEnd: prevYearCash 
@@ -246,10 +238,7 @@
                     const net = ebt - yTax;
                     const div = net > 0 ? net * (inputs.dividendRate / 100) : 0;
                     cumDiv += div;
-                    
-                    // Cash End = Prev Cash + Net Profit - Dividend
                     const cash = prevYearCash + net - div;
-
                     fiveYear.push({ year: y, revenue: rev, expenses: exp, ebt: ebt, tax: yTax, netProfit: net, dividend: div, cashEnd: cash });
                     prevYearCash = cash;
                 }
@@ -298,8 +287,7 @@
                     runwayMonths, marketing: marketingStats, 
                     dividends: { total: dividendPool, perFounderYear: dividendPool / 2, perFounderMonth: (dividendPool / 2) / 12, cumulative5Year: cumDiv },
                     headcountImpact: { diffProfit: -additionalSalaries },
-                    year1RevenueSum: y1RevTotal, year1ExpenseSum: y1ExpTotal, 
-                    finalCashBalance: year1CashAfterTax, // Show Cash Before Dividend in 12-Month Table Footer
+                    year1RevenueSum: y1RevTotal, year1ExpenseSum: y1ExpTotal, finalCashBalance: year1CashEnd,
                     taxDetails: taxDetails
                 });
                 setFiveYearData(fiveYear);
@@ -355,7 +343,7 @@
                     <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 xl:grid-cols-12 gap-6">
                         <div className="xl:col-span-3 space-y-5">
                             <div className="card p-5">
-                                <h3 className="card-title mb-4 border-b pb-2"><Icon path={icons.settings} size={16} className="text-slate-400"/> Scenario Analysis (What-if)</h3>
+                                <h3 className="card-title mb-3 border-b pb-2"><Icon path={icons.settings} size={16} className="text-slate-400"/> Scenario Analysis (What-if)</h3>
                                 <div className="space-y-4">
                                     {[{l:'ยอดขาย (Sales Vol)',n:'sensSalesVol',min:-50,max:50,step:5},{l:'งบโฆษณา (Ad Budget)',n:'sensAdBudget',min:-50,max:100,step:10},{l:'VAT Rate',n:'sensVatRate',min:0,max:10,step:1}].map(f=>(
                                         <div key={f.n}><div className="flex justify-between text-xs mb-1 text-slate-600"><span>{f.l}</span><span className="font-bold">{inputs[f.n]}%</span></div><input type="range" name={f.n} min={f.min} max={f.max} step={f.step} value={inputs[f.n]} onChange={handleInputChange} className="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer accent-secondary"/></div>
@@ -364,6 +352,8 @@
                             </div>
                             <div className="card p-5">
                                 <h3 className="card-title mb-3 border-b pb-2"><Icon path={icons.briefcase} size={16} className="text-slate-400"/> งบลงทุน (CAPEX)</h3>
+                                <div className="flex justify-between items-center mb-2"><label className="text-xs font-bold text-slate-700">ทุนจดทะเบียน</label><input type="number" name="initialCapital" value={inputs.initialCapital} onChange={handleInputChange} className="w-24 border rounded px-2 py-1 text-right text-xs bg-slate-50 focus:outline-none focus:ring-1 focus:ring-primary font-bold text-slate-800"/></div>
+                                <div className="h-px bg-slate-100 my-2"></div>
                                 {capexItems.map(i=><div key={i.name} className="flex justify-between items-center mb-2"><label className="text-xs text-slate-500">{i.label}</label><input type="number" name={i.name} value={inputs[i.name]} onChange={handleInputChange} className="w-24 border rounded px-2 py-1 text-right text-xs bg-slate-50 focus:outline-none focus:ring-1 focus:ring-primary"/></div>)}
                                 <div className="pt-3 border-t mt-2 flex justify-between text-xs font-bold text-emerald-700"><span>Working Capital:</span><span>{formatCurrency(results.workingCapital)}</span></div>
                             </div>
