@@ -88,6 +88,7 @@
             fileSpreadsheet: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/>',
             building2: '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
             printer: '<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/>',
+            award: '<circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>',
         };
 
         const translations = {
@@ -208,7 +209,13 @@
                 baseCase: "ปกติ",
                 best: "ดีสุด",
                 execSummary: "Executive Summary (บทสรุปผู้บริหาร)",
-                assumptions: "*สมมติฐาน: รายได้เติบโตตามอัตราที่เลือก (Growth), ค่าใช้จ่ายเพิ่มขึ้นตามเงินเฟ้อ (Inflation) ต่อปี"
+                assumptions: "*สมมติฐาน: รายได้เติบโตตามอัตราที่เลือก (Growth), ค่าใช้จ่ายเพิ่มขึ้นตามเงินเฟ้อ (Inflation) ต่อปี",
+                scoreTitle: "Business Viability Score (คะแนนความเป็นไปได้)",
+                scoreGrade: "เกรด",
+                scoreDetails: "รายละเอียดการให้คะแนน",
+                risk: "ความเสี่ยง",
+                viability: "ความเป็นไปได้",
+                totalCapex: "รวมงบลงทุน (Total CAPEX)"
             },
             cn: {
                 appTitle: "Prime Axis Estate",
@@ -327,15 +334,21 @@
                 baseCase: "正常",
                 best: "最好",
                 execSummary: "执行摘要 (Executive Summary)",
-                assumptions: "*假设: 收入按选定增长率 (Growth) 增长, 支出按通胀率 (Inflation) 每年增加"
+                assumptions: "*假设: 收入按选定增长率 (Growth) 增长, 支出按通胀率 (Inflation) 每年增加",
+                scoreTitle: "业务可行性评分 (Business Viability Score)",
+                scoreGrade: "等级",
+                scoreDetails: "评分详情",
+                risk: "风险",
+                viability: "可行性",
+                totalCapex: "总资本支出 (Total CAPEX)"
             }
         };
 
         const DEFAULT_INPUTS = {
             vatMode: 'include', growthRate: 0, annualGrowthRate: 15, inflationRate: 5, 
             initialCapital: 2000000, capexRegistration: 20000, capexOffice: 120000, capexEquipment: 100000, capexTech: 60000, capexLaunch: 50000,
-            avgHousePrice: 7000000, salesVolume: 3, salesCommRate: 5,             
-            rentalVolume: 7, avgRentalPrice: 50000, rentalCommMonths: 1,  
+            avgHousePrice: 7000000, salesVolume: 3, salesCommRate: 5,              
+            rentalVolume: 7, avgRentalPrice: 50000, rentalCommMonths: 1,   
             pmUnits: 0, pmFeePerUnit: 2000,
             marketingBudget: 100000, officeRent: 35000, softwareCost: 10000, otherExpenses: 0, 
             salaryManagerRate: 30000, salaryManagerCount: 1, salarySalesRate: 18000, salarySalesCount: 2, salaryAdminRate: 15000, salaryAdminCount: 1, salaryListingRate: 15000, salaryListingCount: 1, salaryContentRate: 15000, salaryContentCount: 1,
@@ -378,7 +391,8 @@
                 year1RevenueSum: 0, year1ExpenseSum: 0, finalCashBalance: 0,
                 unitEconomics: { sales: 0, rental: 0 },
                 pmIncome: 0,
-                executiveSummary: ""
+                executiveSummary: "",
+                score: { total: 0, grade: 'F', details: [] }
             });
 
             const [cashFlowData, setCashFlowData] = useState([]);
@@ -621,6 +635,55 @@
                 execSummary += annualNetProfit > 0 ? "มีกำไรสุทธิ" : "ขาดทุนสุทธิ";
                 execSummary += ` | ROAS: ${marketingStats.totalROAS.toFixed(1)}x`;
 
+                // --- SCORING ALGORITHM ---
+                let score = 0;
+                let scoreDetails = [];
+
+                // 1. Profitability (Max 30) - Net Margin
+                let scoreProfit = 0;
+                if (netMargin >= 20) scoreProfit = 30;
+                else if (netMargin >= 15) scoreProfit = 25;
+                else if (netMargin >= 10) scoreProfit = 20;
+                else if (netMargin > 0) scoreProfit = 10;
+                score += scoreProfit;
+                scoreDetails.push({ name: 'Net Margin', score: scoreProfit, max: 30, val: `${netMargin.toFixed(1)}%` });
+
+                // 2. Safety / Runway (Max 30) - Cash Runway
+                let scoreRunway = 0;
+                if (workingCapital < 0) scoreRunway = 0; // Negative initial is terrible
+                else if (runwayMonths >= 18) scoreRunway = 30;
+                else if (runwayMonths >= 12) scoreRunway = 25;
+                else if (runwayMonths >= 6) scoreRunway = 15;
+                else if (runwayMonths >= 3) scoreRunway = 5;
+                score += scoreRunway;
+                scoreDetails.push({ name: 'Cash Runway', score: scoreRunway, max: 30, val: `${runwayMonths.toFixed(1)} mo` });
+
+                // 3. Efficiency (Max 20) - ROAS
+                let scoreEff = 0;
+                const roasVal = marketingStats.totalROAS;
+                if (roasVal >= 8) scoreEff = 20;
+                else if (roasVal >= 5) scoreEff = 15;
+                else if (roasVal >= 3) scoreEff = 10;
+                else if (roasVal >= 1) scoreEff = 5;
+                score += scoreEff;
+                scoreDetails.push({ name: 'Marketing ROAS', score: scoreEff, max: 20, val: `${roasVal.toFixed(1)}x` });
+
+                // 4. Attractiveness (Max 20) - ROI
+                let scoreRoi = 0;
+                if (roi >= 50) scoreRoi = 20;
+                else if (roi >= 25) scoreRoi = 15;
+                else if (roi >= 10) scoreRoi = 10;
+                else if (roi > 0) scoreRoi = 5;
+                score += scoreRoi;
+                scoreDetails.push({ name: 'ROI (Year 1)', score: scoreRoi, max: 20, val: `${roi.toFixed(1)}%` });
+
+                // Grade
+                let grade = 'F';
+                if (score >= 80) grade = 'A';
+                else if (score >= 70) grade = 'B';
+                else if (score >= 50) grade = 'C';
+                else if (score >= 30) grade = 'D';
+
                 setResults({
                     totalCapex, workingCapital, totalGross, vatAmount, netRevenue,
                     distSales, distListing, distAdmin, distManager, distContent, distCompany,
@@ -634,7 +697,8 @@
                     taxDetails: taxDetails,
                     unitEconomics: { sales: unitSaleProfit, rental: unitRentProfit },
                     pmIncome: pmBase,
-                    executiveSummary: execSummary
+                    executiveSummary: execSummary,
+                    score: { total: score, grade, details: scoreDetails }
                 });
                 setFiveYearData(fiveYear);
                 setCashFlowData(cfData);
@@ -651,6 +715,10 @@
             
             const capexItems = [{ label: 'regCost', name: 'capexRegistration' }, { label: 'officeSetup', name: 'capexOffice' }, { label: 'itEquip', name: 'capexEquipment' }, { label: 'techSys', name: 'capexTech' }, { label: 'launchCost', name: 'capexLaunch' }];
             const staffRoles = [ { id: 'Manager', label: 'manager', rateKey: 'salaryManagerRate', countKey: 'salaryManagerCount' }, { id: 'Sales', label: 'teamSales', rateKey: 'salarySalesRate', countKey: 'salarySalesCount' }, { id: 'Admin', label: 'admin', rateKey: 'salaryAdminRate', countKey: 'salaryAdminCount' }, { id: 'Listing', label: 'listing', rateKey: 'salaryListingRate', countKey: 'salaryListingCount' }, { id: 'Content', label: 'content', rateKey: 'salaryContentRate', countKey: 'salaryContentCount' } ];
+
+            // Score Color Helper
+            const getScoreColor = (s) => s >= 80 ? 'text-emerald-600' : s >= 60 ? 'text-blue-600' : s >= 40 ? 'text-amber-500' : 'text-red-600';
+            const getGradeBg = (g) => g === 'A' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : g === 'B' ? 'bg-blue-100 text-blue-800 border-blue-200' : g === 'C' ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-red-100 text-red-800 border-red-200';
 
             return (
                 <div className="bg-slate-100 min-h-screen font-sans text-slate-800 pb-10">
@@ -671,6 +739,69 @@
                                     <button onClick={resetToDefaults} className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors" title={t.reset}><Icon path={icons.refreshCw} size={18}/></button>
                                     <button onClick={downloadCSV} className="bg-success hover:bg-emerald-600 text-white p-2 rounded-lg transition-colors" title="CSV"><Icon path={icons.fileSpreadsheet} size={18}/></button>
                                     <button onClick={() => window.print()} className="bg-accent hover:bg-amber-600 text-white p-2 rounded-lg transition-colors" title={t.print}><Icon path={icons.megaphone} size={18}/></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* NEW: BUSINESS SCORECARD */}
+                    <div className="max-w-7xl mx-auto px-4 -mt-2 mb-6 no-print">
+                        <div className="card p-6 shadow-md border-t-4 border-t-indigo-500">
+                            <div className="flex flex-col md:flex-row gap-8 items-center">
+                                {/* Score Display */}
+                                <div className="flex-none text-center">
+                                    <h3 className="text-sm text-slate-500 font-bold uppercase mb-2">{t.scoreTitle}</h3>
+                                    <div className="relative inline-flex items-center justify-center">
+                                        <svg className="w-28 h-28 transform -rotate-90">
+                                            <circle cx="56" cy="56" r="48" stroke="#f1f5f9" strokeWidth="10" fill="none" />
+                                            <circle cx="56" cy="56" r="48" stroke="currentColor" strokeWidth="10" fill="none" 
+                                                strokeDasharray={301} 
+                                                strokeDashoffset={301 - (301 * results.score.total / 100)} 
+                                                className={`transition-all duration-1000 ${getScoreColor(results.score.total)}`} 
+                                            />
+                                        </svg>
+                                        <div className="absolute flex flex-col items-center">
+                                            <span className={`text-3xl font-bold ${getScoreColor(results.score.total)}`}>{results.score.total}</span>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${getGradeBg(results.score.grade)}`}>{t.scoreGrade} {results.score.grade}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Score Details */}
+                                <div className="flex-1 w-full grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                    {results.score.details.map((item, idx) => (
+                                        <div key={idx} className="bg-slate-50 p-3 rounded-lg border border-slate-100 flex flex-col justify-between">
+                                            <div className="text-xs text-slate-500 font-bold uppercase mb-1">{item.name}</div>
+                                            <div className="flex justify-between items-end">
+                                                <div className="text-sm font-semibold text-slate-700">{item.val}</div>
+                                                <div className="text-sm font-bold text-slate-400">{item.score}/{item.max}</div>
+                                            </div>
+                                            <div className="w-full h-1.5 bg-slate-200 rounded-full mt-1.5">
+                                                <div className={`h-full rounded-full ${item.score/item.max >= 0.7 ? 'bg-emerald-500' : item.score/item.max >= 0.4 ? 'bg-amber-400' : 'bg-red-400'}`} style={{width: `${(item.score/item.max)*100}%`}}></div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Recommendation Text */}
+                                <div className="flex-1 w-full text-sm border-l pl-6 border-slate-200 italic text-slate-600">
+                                    {results.score.total < 50 ? (
+                                        <div className="flex gap-2 items-start text-red-600 not-italic">
+                                            <Icon path={icons.alertTriangle} className="shrink-0" />
+                                            <div><span className="font-bold">{t.risk} (High Risk):</span> โมเดลนี้อาจขาดทุนหรือสายป่านไม่ยาวพอ ควรลดรายจ่ายประจำ</div>
+                                        </div>
+                                    ) : results.score.total < 80 ? (
+                                        <div className="flex gap-2 items-start text-amber-600 not-italic">
+                                            <Icon path={icons.activity} className="shrink-0" />
+                                            <div><span className="font-bold">{t.viability} (Viable):</span> ธุรกิจไปได้แต่อาจเหนื่อยช่วงแรก ตรวจสอบ Cash Flow ให้ดี</div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex gap-2 items-start text-emerald-600 not-italic">
+                                            <Icon path={icons.award} className="shrink-0" />
+                                            <div><span className="font-bold">{t.viability} (Excellent):</span> ตัวเลขดูดีมาก มีโอกาสคืนทุนไวและกำไรสูง</div>
+                                        </div>
+                                    )}
+                                    <p className="mt-2 text-xs text-slate-400 not-italic">* คะแนนคำนวณจาก Net Margin, ROI, Cash Runway และ ROAS ตามมาตรฐาน SME</p>
                                 </div>
                             </div>
                         </div>
@@ -733,7 +864,11 @@
                                 <div className="flex justify-between items-center mb-2"><label className="text-xs font-bold text-slate-700">{t.initialCapital}</label><input type="number" name="initialCapital" value={inputs.initialCapital} onChange={handleInputChange} className="w-24 border rounded px-2 py-1 text-right text-xs bg-slate-50 focus:outline-none focus:ring-1 focus:ring-primary font-bold text-slate-800"/></div>
                                 <div className="h-px bg-slate-100 my-2"></div>
                                 {capexItems.map(i=><div key={i.name} className="flex justify-between items-center mb-2"><label className="text-xs text-slate-500">{t[i.label]}</label><input type="number" name={i.name} value={inputs[i.name]} onChange={handleInputChange} className="w-24 border rounded px-2 py-1 text-right text-xs bg-slate-50 focus:outline-none focus:ring-1 focus:ring-primary"/></div>)}
-                                <div className="pt-3 border-t mt-2 flex justify-between text-xs font-bold text-emerald-700"><span>{t.workingCapital}:</span><span>{formatCurrency(results.workingCapital)}</span></div>
+                                {/* FIXED: Added Total CAPEX */}
+                                <div className="pt-3 border-t mt-2 space-y-1">
+                                    <div className="flex justify-between text-xs text-slate-500"><span>{t.totalCapex}:</span><span className="font-bold text-slate-700">({formatCurrency(results.totalCapex)})</span></div>
+                                    <div className="flex justify-between text-xs font-bold text-emerald-700"><span>{t.workingCapital}:</span><span>{formatCurrency(results.workingCapital)}</span></div>
+                                </div>
                             </div>
                             <div className="card p-5">
                                 <div className="flex justify-between items-center mb-4 border-b pb-2"><h3 className="card-title"><Icon path={icons.home} size={16} className="text-slate-400"/> {t.revenue}</h3><button onClick={toggleVatMode} className={`text-[10px] px-2 py-1 rounded font-bold transition-colors ${inputs.vatMode==='include'?'bg-primary text-white':'bg-slate-200 text-slate-600'}`}>{t.vatMode} {inputs.vatMode==='include'? t.vatInc : t.vatExc}</button></div>
@@ -841,7 +976,8 @@
                                 <h4 className="card-title mb-2"><Icon path={icons.pieChart} size={16} className="text-slate-400"/> {t.netIncomeMix}</h4>
                                 <div className="flex-1 flex items-center">
                                     <div className="w-1/2 h-full"><ResponsiveContainer><PieChart><Pie data={revenuePieData} innerRadius={35} outerRadius={50} paddingAngle={5} dataKey="value" stroke="none">{revenuePieData.map((e,i)=><Cell key={i} fill={COLORS.revenue[i]}/>)}</Pie><Tooltip formatter={formatCurrency}/></PieChart></ResponsiveContainer></div>
-                                    <div className="w-1/2 text-xs space-y-2">{revenuePieData.map((e,i)=><div key={i}><div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full" style={{background:COLORS.revenue[i]}}></div><span className="text-slate-500">{e.name}</span></div><div className="pl-3 font-bold text-slate-700">{formatCurrency(e.value)}</div></div>)}</div>
+                                    {/* FIXED: Added % calculation */}
+                                    <div className="w-1/2 text-xs space-y-2">{revenuePieData.map((e,i)=><div key={i}><div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full" style={{background:COLORS.revenue[i]}}></div><span className="text-slate-500">{e.name}</span></div><div className="pl-3 font-bold text-slate-700">{formatCurrency(e.value)} <span className="text-slate-400 font-normal ml-1">({(results.netRevenue * (results.companySharePercent/100)) > 0 ? ((e.value / (results.netRevenue * (results.companySharePercent/100))) * 100).toFixed(0) : 0}%)</span></div></div>)}</div>
                                 </div>
                             </div>
                             <div className="card p-5 h-72 flex flex-col">
